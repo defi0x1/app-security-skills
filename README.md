@@ -2,37 +2,19 @@
 
 # appsec
 
-**A code review skill for Claude Code that reviews security and code quality in one pass, and reports only what it can prove.**
-
-One command. Two equal review tracks. Evidence-gated findings. Read-only by design.
+**A code review skill for Claude Code: security and code quality in one pass, reporting only what it can prove.**
 
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-0.4.0-informational.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-0.4.1-informational.svg)](CHANGELOG.md)
 [![Claude Code skill](https://img.shields.io/badge/Claude%20Code-skill-D97757.svg)](https://docs.claude.com/en/docs/claude-code/skills)
 
 </div>
 
 ---
 
-Most automated reviews fail in one of two ways: they bury you in plausible-sounding noise, or they miss the bug that lives in the *gap between two components*. `appsec` is built around fixing both. Every finding must pass explicit verification gates, facts the repository cannot prove are labelled **Needs validation** instead of guessed, and hunting is driven by *invariants and trust boundaries* instead of keyword lists.
+Most automated reviews either bury you in plausible-sounding noise or miss the bug that lives in the *gap between two components*. `appsec` addresses both: every finding must pass explicit verification gates, facts the repository cannot prove are labelled **Needs validation** instead of guessed, and hunting is driven by *invariants and trust boundaries* instead of keyword lists.
 
-```text
-/appsec
-```
-
-That is the whole interface. It detects the scope (your branch, an MR/PR, or the whole repo), decides how deep to go, picks the relevant domain playbooks, and returns a structured report with a merge verdict. It does not ask questions unless it cannot continue.
-
-## Why it is different
-
-| | Typical AI review | `appsec` |
-|---|---|---|
-| **Coverage** | One generic pass | **Two equal tracks**: Security (OWASP/CWE, 10 domain playbooks) and Code (logic, spec, data, performance, design, tests) |
-| **Findings** | Anything that sounds risky | Must pass **5 security gates / 4 code gates** with `file:line` evidence, a named trust boundary and a concrete outcome |
-| **Unknowns** | Guesses either way | **Needs validation** verdict for facts outside the repo (proxy, IdP, IAM, ingress) with a safe way to check |
-| **Hunting** | Pattern matching | **Invariant-based**: compares sibling code paths, checks handoff assumptions between components, looks for variants of a confirmed root cause |
-| **Big changes** | Same single pass | **Deep engine**: recon, countable coverage table, parallel hunters, coverage critic, independent verifiers, cumulative across rounds |
-| **Noise control** | Reports hardening as bugs | Separates findings from hardening; ships a long "not a security finding" list; blocks a merge only for problems *this change* introduced |
-| **Safety** | May run things | **Read-only**: no checkout, no stash, no files in your project, no probing of deployed systems |
+Run `/appsec`. It detects the scope (your branch, an MR/PR, or the whole repo), decides how deep to go, picks the relevant domain playbooks, and returns a structured report with a merge verdict. It does not ask questions unless it cannot continue. It is read-only: no checkout, no stash, no files in your project, no probing of deployed systems.
 
 ## What it reviews
 
@@ -59,7 +41,7 @@ That is the whole interface. It detects the scope (your branch, an MR/PR, or the
 
 ### Code track
 
-Correctness and edge cases, business logic against the spec, data migrations and API compatibility, error handling, performance, design and **over-engineering** (every smell comes with a diagnostic question and a simpler alternative), tests, maintainability and conventions, operability. Severity is `BLOCKER / MAJOR / MINOR / NIT` with a hard cap on nits. Uncertain business rules become **Questions for the author**, never accusations. It reads your repo's own `REVIEW.md` / `CLAUDE.md` rules, and reports every instance of a confirmed pattern under a single finding so the author can fix the whole class in one pass.
+Correctness and edge cases, business logic against the spec, data migrations and API compatibility, error handling, performance, design and **over-engineering** (with a simpler alternative), tests, maintainability and conventions, operability. Severity is `BLOCKER / MAJOR / MINOR / NIT`, with nits capped at 5. Uncertain business rules become **Questions for the author**, never accusations. It reads your repo's own `REVIEW.md` / `CLAUDE.md` rules, and reports every instance of a confirmed pattern under a single finding so the author can fix the whole class in one pass.
 
 ## How it works
 
@@ -86,7 +68,7 @@ flowchart TD
 
 **Standard review** runs both tracks over the diff with a clean-context adversarial challenge for serious findings.
 
-**Deep review** triggers automatically on diffs over 400 lines or 15 files, changes spanning services or multiple risk domains, auth/payment/authorization mechanism changes, whole-repo scope, or when you ask for it. It works like this:
+**Deep review** triggers automatically on diffs over 400 changed lines or 15 files, changes spanning services or two or more domains, new routes or mechanism changes in auth/payment/authorization, whole-repo scope, or when you ask for it. It works like this:
 
 1. **Recon** maps the blast radius, including parallel code paths *outside* the diff.
 2. A **coverage table** gives every unit a stable ID, a status and evidence. "I reviewed auth" does not count as coverage.
@@ -99,19 +81,21 @@ If the session that wrote the code is also the one asked to review it, `appsec` 
 
 ## Usage
 
-```text
-/appsec                        work in progress: branch commits + uncommitted + new files, against the target branch
-/appsec 123                    MR/PR 123 (also !123, #123, or a pasted URL)
-/appsec 123 125                several MRs
-/appsec into develop           set the target branch
-/appsec uncommitted only       only what is not committed yet
-/appsec thorough               force the deep engine
-/appsec whole repo             audit everything (or: /appsec src/billing)
-/appsec security only          skip the code track (or: code only)
-/appsec 123. Spec: invoices are visible only to their creator or an accountant of the same org
-```
+Everything after `/appsec` is plain language, not flags; all of it is optional.
 
-Everything after `/appsec` is optional and written in plain language. Before it starts, it prints one line: scope, files and lines, standard or deep, and the domains it chose.
+| Goal | Example |
+|---|---|
+| Review your work in progress (commits, uncommitted and new files) | `/appsec` |
+| Review a merge or pull request | `/appsec 123`, `/appsec !123`, or paste the URL |
+| Review several MRs together | `/appsec 123 and 125` |
+| Pick the target branch | `/appsec against develop` |
+| Look only at what is not committed yet | `/appsec just my uncommitted changes` |
+| Force the deep engine | `/appsec be thorough` |
+| Audit a whole repo or directory | `/appsec audit the whole repo`, `/appsec src/billing` |
+| Run only one track | `/appsec security only`, `/appsec code only` |
+| Give the business rule to check against | `/appsec 123. Spec: invoices are visible only to their creator or an accountant of the same org` |
+
+Before it starts, it prints one line: scope, files and lines, standard or deep, and the domains it chose.
 
 ## The report
 
@@ -129,12 +113,7 @@ The report is about the code only: no usernames, hostnames, timestamps or local 
 
 ## Design principles
 
-1. **Evidence or silence.** No `file:line`, no finding. Severity is capped at the proven consequence.
-2. **Few and right beats many and noisy.** Unsure about business intent: ask. Depends on a fact outside the repo: *Needs validation*. A missing secondary layer when another layer already blocks the issue is hardening, not a finding.
-3. **Server-side decisions.** Identity, tenant and role come from verified tokens. Allowlists over blocklists. Fix the root cause.
-4. **Simple by default.** Every abstraction must serve a current requirement; every design suggestion ships with a simpler version.
-5. **Block only on what this change caused.** Pre-existing issues go to *Context*.
-6. **Read-only and traceless.** No code edits, no files, hooks or worktrees in your project, no checkout, no stash. Verification is source-based; no probing of deployed environments, third-party services or real credentials.
+Evidence or silence; few and right beats many and noisy; server-side decisions; simple by default; block only on what this change caused; read-only and traceless. The full rules are in [`appsec/SKILL.md`](appsec/SKILL.md).
 
 ## Install
 
@@ -165,7 +144,7 @@ Update with `git pull`. Uninstall with `rm ~/.claude/skills/appsec`.
 | [`trivy`](https://github.com/aquasecurity/trivy) | Dependency CVEs, IaC, images |
 | [`semgrep`](https://github.com/semgrep/semgrep) | SAST rules |
 | `gh` / `glab` | Fetching GitHub PRs / GitLab MRs (MRs can also be fetched via `git fetch` refs) |
-| [Trail of Bits plugins](appsec/references/tob.md) | Optional second opinions (false-positive check, differential review, variant analysis) |
+| [Trail of Bits plugins](appsec/references/tob.md) | Second opinions (false-positive check, differential review, variant analysis) |
 
 ## Repository layout
 
@@ -179,8 +158,8 @@ appsec/
     ├── code-review.md               code track: severity, gates, intent sources, over-engineering table
     ├── secure-coding-patterns.md    wrong / bypass / right tables, known-safe patterns
     ├── hunting-method.md            invariants, boundary test, domain selection, feature abuse, chaining
-    ├── domains/                     nine domain playbooks (table above)
-    ├── severity-cwe.md              severity anchors and ~100 finding types mapped to CWE
+    ├── domains/                     nine of the ten domain playbooks (the tenth is ai-llm-security.md)
+    ├── severity-cwe.md              severity anchors and finding types mapped to CWE
     ├── change-classification.md     10 change groups, sensitive-area recipes
     ├── supply-chain-devsecops.md    lockfiles, registries, CVE triage, CI tokens
     ├── secure-design.md             design notes, STRIDE per element, acceptance criteria

@@ -1,12 +1,12 @@
 # Multiple MRs, MRs by IID, multiple repos
 
-Set `GITLAB_HOST` (e.g. `gitlab.com` or a self-managed host). GitHub: use `gh pr view <n> --json baseRefName,headRefOid` and `git fetch origin pull/<n>/head`.
+GitLab commands below need `GITLAB_HOST` (e.g. `gitlab.com` or a self-managed host). GitHub: `gh pr view <n> --json baseRefName,headRefOid` for base and head SHA, `git fetch origin pull/<n>/head` to get the head objects.
 
 Each MR is one review unit `(repo, base, head)`. Merge results in the report, not the diffs, except in strategy A.
 
 ## Fetch an MR by IID (GitLab)
 
-Try in order and stop at the first one that works. **Do not install tools on your own.**
+Try in order, stop at the first that works. Do not install tools.
 
 ```bash
 IID=123                                   # MR number (after the !)
@@ -15,17 +15,17 @@ glab mr view "$IID" --output json 2>/dev/null | \
   python3 -c 'import json,sys;d=json.load(sys.stdin);print(d["target_branch"],d["sha"],d["source_branch"])'
 
 # (b) GitLab API: needs GITLAB_TOKEN (scope read_api) and the URL-encoded project path
-PROJ=$(git remote get-url origin | sed -E 's#.*gitlab\.[^/]+/##; s#\.git$##' | sed 's#/#%2F#g')
+PROJ=$(git remote get-url origin | sed -E 's#^(https?://|ssh://)?([^@/]+@)?[^/:]+[:/]##; s#\.git$##' | sed 's#/#%2F#g')   # handles https and scp-style ssh remotes
 curl -sf -H "PRIVATE-TOKEN: $GITLAB_TOKEN" \
   "https://$GITLAB_HOST/api/v4/projects/$PROJ/merge_requests/$IID" | \
   python3 -c 'import json,sys;d=json.load(sys.stdin);print(d["target_branch"],d["sha"],d["source_branch"])'
 
 # (c) Repo read access only: GitLab exposes the MR head ref, NO API needed:
 git fetch -q origin "refs/merge-requests/$IID/head" && echo "HEAD_MR=$(git rev-parse FETCH_HEAD)"   # does not create a new ref
-#   -> you still need the target branch name to compute the base; if (a)/(b) do not work, ASK the user.
+#   -> the target branch name is still needed for the base; if (a)/(b) fail, ask the user.
 ```
 
-Compute the base for one MR: `BASE=$(git merge-base origin/<target_branch> <head_sha>)`. For an **already merged** MR: `head` is the merge commit or the last commit of the source branch; the base is the `merge-base` with the first parent of the merge commit (`git rev-parse <merge>^1`).
+Compute the base for one MR: `BASE=$(git merge-base origin/<target_branch> <head_sha>)` (fetch the target branch first if `origin/<target_branch>` is stale). For an **already merged** MR: `head` is the merge commit or the last commit of the source branch; the base is the `merge-base` with the first parent of the merge commit (`git rev-parse <merge>^1`).
 
 Diff of the unit: `git diff "$BASE...$HEAD"` (three dots = what the MR added since it diverged from the target).
 
@@ -45,7 +45,7 @@ In that case review **one** unit `OLDEST_BASE...NEWEST_HEAD`. You must still lis
 
 For each unit `(repo, base, head)`:
 
-Do not check out, do not create a worktree, do not switch the user's branch. Read everything from git objects:
+Read from git objects only (no checkout or worktree, per SKILL.md principle 8):
 
 ```bash
 git diff "$BASE...$HEAD"                 # diff of the MR

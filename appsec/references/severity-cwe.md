@@ -23,7 +23,7 @@ Distinguishing HIGH from MEDIUM: does the proven outcome **completely defeat** a
 | RCE, OS command injection, code injection (`eval`, `exec`, template) | CRITICAL | CWE-78, CWE-94, CWE-1336 |
 | Insecure deserialization of untrusted data | CRITICAL | CWE-502 |
 | Auth bypass; endpoint that should require auth but does not; JWT not verified, `alg:none` | CRITICAL | CWE-306, CWE-287, CWE-347 |
-| Real secret hardcoded or committed | CRITICAL prod, HIGH non-prod | CWE-798 |
+| Real secret hardcoded or committed | CRITICAL if it grants prod access, otherwise HIGH | CWE-798 |
 | SQL, NoSQL, SPL, KQL, LDAP injection | HIGH, CRITICAL if pre-auth | CWE-89, CWE-943, CWE-90 |
 | Broken access control: IDOR, missing owner or tenant check, missing role check on a state-changing action | HIGH | CWE-639, CWE-862, CWE-863, CWE-284 |
 | Server trusts client-declared identity (header, body) | HIGH | CWE-807, CWE-290 |
@@ -34,19 +34,19 @@ Distinguishing HIGH from MEDIUM: does the proven outcome **completely defeat** a
 | XXE | HIGH | CWE-611 |
 | Mass assignment into sensitive fields | HIGH | CWE-915 |
 | Reset, invite, verify token that is guessable, never expires, or is not single-use | HIGH | CWE-640, CWE-330, CWE-613 |
-| Race, TOCTOU on balance, quota, approval state | HIGH financial, MEDIUM other | CWE-367, CWE-362 |
+| Race, TOCTOU on balance, quota, approval state | HIGH if financial, otherwise MEDIUM | CWE-367, CWE-362 |
 | Reflected, DOM XSS | MEDIUM | CWE-79 |
 | CSRF on a state-changing action | MEDIUM | CWE-352 |
 | Open redirect, deeplink without scheme and host validation | MEDIUM | CWE-601 |
-| DoS: unbounded body, `$in`, pagination, depth; regex, zip bomb | MEDIUM, HIGH if unauth and amplification | CWE-400, CWE-770, CWE-1333 |
+| DoS: unbounded body, `$in`, pagination, depth; ReDoS, zip bomb, amplifying query | MEDIUM, HIGH if unauthenticated and it affects other users | CWE-400, CWE-770, CWE-1333, CWE-409 |
 | Sensitive information disclosure through responses | MEDIUM, HIGH if bulk or unauth | CWE-200, CWE-359 |
 | Server-side logging of PII, credentials, tokens, request bodies | MEDIUM | CWE-532, CWE-312 |
 | Missing or broken audit log for sensitive actions | MEDIUM | CWE-778, CWE-223 |
 | Weak crypto for security: MD5, SHA1, ECB, static IV, `Math.random` | MEDIUM, HIGH if password or session token | CWE-327, CWE-328, CWE-330, CWE-916 |
 | TLS verify disabled, trust-all, cleartext to external services | MEDIUM, HIGH if carrying credentials or PII | CWE-295, CWE-319 |
 | CORS `*` with credentials or reflected origin | MEDIUM | CWE-942 |
-| Dependency or base image pulled straight from a public registry, bypassing the internal registry/controlled proxy | MEDIUM, HIGH if production | CWE-829, CWE-1357 |
-| Dependency with a HIGH, CRITICAL CVE that has a fix available | per the CVE's CVSS | CWE-1395 |
+| Dependency or base image pulled straight from a public registry, bypassing the organization's internal registry/controlled proxy (only when one exists) | MEDIUM, HIGH if production | CWE-829, CWE-1357 |
+| Dependency with a HIGH, CRITICAL CVE that has a fix available | CVSS band (9.0+ CRITICAL, 7.0 to 8.9 HIGH); lower one level if the vulnerable code is not reached | CWE-1395 |
 | Pipeline: security job `allow_failure`, `--exit-code 0`, `schedule` only; scanner disabled | MEDIUM | CWE-1357 |
 | Suppression (`.trivyignore`, `nosemgrep`, `nosec`) without a reason | LOW | CWE-1357 |
 | Missing lockfile, floating versions | LOW | CWE-1357 |
@@ -56,8 +56,8 @@ Distinguishing HIGH from MEDIUM: does the proven outcome **completely defeat** a
 | Non-constant-time secret comparison | LOW | CWE-208 |
 | User enumeration | LOW | CWE-204 |
 | Missing rate limit on login, OTP, reset | MEDIUM | CWE-307 |
-| Missing rate limit on an ordinary read endpoint | LOW, INFO | CWE-770 |
-| Mobile resilience: root detection, obfuscation, anti-tamper | INFO, LOW | none |
+| Missing rate limit on an ordinary read endpoint | LOW, INFO if no concrete abuse | CWE-770 |
+| Mobile resilience: root detection, obfuscation, anti-tamper | INFO, LOW at most | none |
 
 ### Domain additions ([domains/](domains/))
 
@@ -83,7 +83,7 @@ Distinguishing HIGH from MEDIUM: does the proven outcome **completely defeat** a
 | Enumeration oracle through count, filter, sort, errors | LOW, MEDIUM if it exposes sensitive data | CWE-203, CWE-204 |
 | gRPC interceptor not covering streams, reflection, gateway | HIGH if authz bypass | CWE-862 |
 | Webhook/event without source signature verification, accepting replay | HIGH if it triggers a privileged or financial operation | CWE-345, CWE-294 |
-| Duplicate message repeating a financial or state side effect | HIGH financial, MEDIUM other | CWE-841, CWE-362 |
+| Duplicate message repeating a financial or state side effect | HIGH if financial, otherwise MEDIUM | CWE-841, CWE-362 |
 | Workload identity, IAM over-permission with a selectable target input | HIGH | CWE-269, CWE-250 |
 | Container can select privileged, hostPath, docker.sock | HIGH, CRITICAL if from low-trust input | CWE-250 |
 | CI runs untrusted code together with secrets or a write token (`pull_request_target` + PR checkout) | CRITICAL | CWE-829, CWE-94 |
@@ -97,10 +97,9 @@ Distinguishing HIGH from MEDIUM: does the proven outcome **completely defeat** a
 | Out-of-bounds write from untrusted input | CRITICAL if remotely reachable, otherwise HIGH | CWE-787 |
 | Out-of-bounds read, use-after-free, integer overflow before allocation | HIGH | CWE-125, CWE-416, CWE-190 |
 | Panic/abort/deadlock from untrusted input in a shared process | MEDIUM, HIGH if unauthenticated and stops the whole service | CWE-248, CWE-833 |
-| ReDoS, decompression bloat, unbounded amplifying query | MEDIUM, HIGH if unauthenticated and affects others | CWE-1333, CWE-409, CWE-400 |
 | Agent: attacker content triggers an action under the victim's permissions that was not requested/approved | HIGH | CWE-441, CWE-863 |
 | Agent/tool uses a shared credential, does not check the requester's permission on the resource | HIGH | CWE-441, CWE-862 |
-| Agent memory/RAG written by one principal and read by another | HIGH | CWE-668, CWE-1426 |
+| Agent memory/RAG written by one principal and read by another | HIGH | CWE-668, CWE-1427 |
 
 ## Not a security finding
 
@@ -114,8 +113,7 @@ Do not put these in the findings table; they do not affect the verdict. If they 
 - Generic defense-in-depth recommendations not tied to a line of code in scope.
 - Missing type or length validation on a field that does not reach a dangerous sink and does not cause DoS.
 - Test code, fixtures, mocks, generated code (`*.pb.go`, `*_test.go`, `__mocks__`, `testdata/`), unless it contains a real secret.
-- Missing defense layer B when layer A already blocks the attack: hardening note.
-- Missing header, cookie flag, MFA prompt, rate limit, seccomp, least privilege when there is no reachable path and no concrete consequence: hardening.
+- Missing defense layer B when layer A already blocks the attack, or a missing header, cookie flag, MFA prompt, rate limit, seccomp, least privilege with no reachable path and no concrete consequence: hardening ([hunting-method.md](hunting-method.md) section 4).
 - Prompt injection that does not lead to a boundary violation (does not touch another principal, does not use permissions the requester lacks, does not reach a sink the requester cannot reach).
 - Self-injection, self-impact, or use of the principal's own inherent permissions.
 - Generic parser crash with no real untrusted input reaching it; a panic in the requester's own process.

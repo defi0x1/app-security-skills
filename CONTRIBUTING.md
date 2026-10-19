@@ -9,17 +9,9 @@ Thanks for helping improve `appsec`. The skill is a set of markdown files; contr
 - **Read-only.** Nothing in the skill may modify the reviewed project or probe deployed systems.
 - **Concise.** The skill is loaded into a model context. Reference files are read on demand, so keep each focused and avoid duplication across files.
 
-## Layout
+## Vocabulary
 
-```text
-appsec/
-├── SKILL.md              single entry point and non-negotiable principles
-├── workflows/            review.md (standard flow), review-deep.md (audit engine)
-└── references/           standards and playbooks, read on demand
-    └── domains/          one playbook per trust-boundary domain
-```
-
-Keep the shared vocabulary consistent: `Needs validation`, `Approve` / `Approve with comments` / `Changes required before merge`, `Gate 1-5` (security), `Gate 1-4` (code), `Discipline` / `Common moves` / `Verification before reporting` (domain files).
+See the layout in the [README](README.md#repository-layout). Keep the shared vocabulary consistent: `Needs validation`, `Approve` / `Approve with comments` / `Changes required before merge`, `Gate 1-5` (security), `Gate 1-4` (code), `Discipline` / `Common moves` / `Verification before reporting` (domain files).
 
 ## Making a change
 

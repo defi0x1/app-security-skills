@@ -19,7 +19,7 @@ for t in gitleaks trivy semgrep; do command -v $t >/dev/null && echo "have $t" |
 | Work in progress, MR, multiple MRs | Changes required before merge / Approve with comments / Approve |
 | Whole repo, directory | Remediation required / Approve with comments / Approve |
 
-Whole repo, directory: the Change classification section says "Not applicable (no diff)".
+Rules that map findings to a verdict: Phase 4 of [workflows/review.md](../workflows/review.md). Whole repo, directory: the Change classification section says "Not applicable (no diff)".
 
 ## Findings
 
@@ -43,7 +43,7 @@ Whole repo, directory: the Change classification section says "Not applicable (n
 
 {per the Verdict by mode table}
 {One sentence of reasoning, at most 30 words.}
-{Group 9: Needs re-review after release.}
+{Declared group 9: Needs re-review after release.}
 
 | Security | CRITICAL | HIGH | MEDIUM | LOW | INFO | Needs validation |
 |---|---:|---:|---:|---:|---:|---:|
@@ -59,11 +59,11 @@ Whole repo, directory: the Change classification section says "Not applicable (n
 |---|---|
 | Declared | {Group N: name} / Unclassified |
 | Observed from diff | {Group N: name} |
-| Verdict | Match. / Mismatch. Condition "{quote}" violated at `{file}:{line}`: {one sentence}. |
+| Result | Match. / Mismatch. Condition "{quote}" violated at `{file}:{line}`: {one sentence}. |
 | Signals | {N} files. Sensitive areas: {…/none}. New routes: {yes/no}. Dependencies: {yes/no}. CI, Docker, k8s: {yes/no}. |
 
 {Multiple MRs: add a table}
-| MR | Declared | Observed | Match | Verdict | C/H/M/L |
+| MR | Declared | Observed | Result | Merge verdict | C/H/M/L |
 |---|---|---|---|---|---|
 
 ## Security findings

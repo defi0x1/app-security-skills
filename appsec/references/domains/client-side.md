@@ -8,7 +8,7 @@ Use when a trust decision or the rendering of untrusted data happens in the brow
 - The consequence must touch the victim's session, another origin, or a shared storage area. Self-injection into oneself, or exposing the attacker's own data: not a finding.
 - Framework escaping, same-origin policy, CSP, COOP/CORP, service worker scope, and default `noopener` are real controls. Check them before assigning severity.
 - Storage and caches are shared per origin and can outlive the login session. Establish who writes, who reads, and which lifecycle (account, tenant, worker) clears each record.
-- Renderer behavior, extension permissions, deploy headers, or browser policy that you need but cannot see: Needs validation.
+- Renderer behavior, extension permissions, deploy headers, or browser policy you cannot see: Needs validation.
 
 ## DOM and object state
 
@@ -22,7 +22,7 @@ Use when a trust decision or the rendering of untrusted data happens in the brow
 
 | Layer | What to hunt | It is a finding when |
 |---|---|---|
-| `postMessage` | A handler doing sensitive work with `event.data` without an exact origin allowlist (and `event.source` when multiple frames share an origin); sending sensitive data to `*` | Comparing the origin by substring, prefix, suffix, or an unanchored regex is **not** an origin check |
+| `postMessage` | A handler doing sensitive work with `event.data` without an exact origin allowlist (and `event.source` when multiple frames share an origin); sending sensitive data to `*` | The origin check is absent, or by substring, prefix, suffix, or unanchored regex (`indexOf`, `endsWith('.example.com')`), which is not an origin check |
 | Cross-site WebSocket hijacking | The upgrade accepts ambient cookies from a foreign origin, no `Origin` check, no per-channel token | Both a bad upgrade **and** a message handler with security consequences |
 | CORS with credentials | Reflecting or loosely comparing `Origin` + `Access-Control-Allow-Credentials: true` + a sensitive response | `*` + credentials is blocked by the browser itself; report only paths that truly reflect/allow the origin and the cross-origin data or mutation |
 
@@ -40,9 +40,9 @@ Use when a trust decision or the rendering of untrusted data happens in the brow
 | Layer | What to hunt | It is a finding when |
 |---|---|---|
 | XS-Leaks | An attacker page distinguishes cross-origin state via load/error, frame count, redirect, timing, cache, size | There is **one concrete secret predicate** (a private object exists, a role, an account). Generic timing: no |
-| Window/opener | Cross-origin window metadata leaks state; a retained opener lets an attacker page navigate a privileged page | Check COOP, `noopener`, the exact origin |
+| Window/opener | Cross-origin window metadata leaks state; a retained `window.opener` lets an attacker page navigate a privileged page (reverse tabnabbing) | Check COOP, `noopener` (implicit for `target=_blank` in current browsers), the exact origin |
 | Clickjacking | A state-changing action missing `frame-ancestors`/`X-Frame-Options` | A sensitive action can be completed inside a frame. A read-only page missing the header: hardening |
-| Client-side navigation | A client-controlled source drives redirect/navigation without checking scheme or destination (`javascript:`, `data:`) | Reverse tabnabbing only when the code retains `window.opener` or the browser lacks implicit `noopener` support |
+| Client-side navigation | A client-controlled source drives redirect/navigation without checking scheme or destination (`javascript:`, `data:`) | The attacker picks the destination or scheme and a victim session or origin is affected |
 
 ## Common moves
 

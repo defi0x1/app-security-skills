@@ -2,16 +2,16 @@
 
 ## AndroidManifest.xml — platform surface
 - `android:exported="true"` on an activity/service/receiver/**provider** without `permission` / `signature` → externally invokable. An exported provider is especially dangerous (data read/write, SQLi, path traversal).
-- `android:allowBackup="true"` (default is true!) → adb backup extracts app data. Flag if the app stores sensitive data.
+- `android:allowBackup="true"` (default is true, also when omitted) → cloud backup/device transfer copy app data. Flag if the app stores sensitive data without `dataExtractionRules` (API 31+) / `fullBackupContent` exclusions.
 - `android:debuggable="true"` → runtime debugging/injection. CRITICAL if it reaches a release build.
-- `android:usesCleartextTraffic="true"` or missing `networkSecurityConfig` → allows plaintext HTTP.
+- `android:usesCleartextTraffic="true"`, or `cleartextTrafficPermitted="true"` in `networkSecurityConfig` (`base-config` or a broad `domain-config`) → plaintext HTTP. Default is blocked for `targetSdk` >= 28; a missing config is a finding only when `targetSdk` < 28.
 - `<intent-filter>` with `<data android:scheme=...>` (deeplink) → check that the app validates host/path/param before using them; `android:autoVerify="true"` for App Links.
 - Custom `<permission android:protectionLevel="normal">` protecting sensitive functionality → should be `signature`.
 - `<provider grantUriPermissions="true">` / missing `<path-permission>` → file leak through content URIs.
 
 ```bash
 grep -nE 'android:exported="true"|allowBackup="true"|android:debuggable="true"|usesCleartextTraffic="true"|android:scheme|protectionLevel="(normal|dangerous)"|grantUriPermissions' AndroidManifest.xml
-grep -L 'networkSecurityConfig' AndroidManifest.xml   # missing network security config
+grep -rnE 'cleartextTrafficPermitted="true"' --include=*.xml res/xml   # network security config
 ```
 Known-safe: `exported="false"`, `signature` permission, a `networkSecurityConfig` that blocks cleartext.
 
@@ -20,14 +20,15 @@ Known-safe: `exported="false"`, `signature` permission, a `networkSecurityConfig
 - `setAllowFileAccess(true)` / `setAllowFileAccessFromFileURLs(true)` / `setAllowUniversalAccessFromFileURLs(true)` → JS reads local files.
 - `loadUrl(<variable controlled by user/intent>)`, `loadDataWithBaseURL` with untrusted HTML.
 - `setWebContentsDebuggingEnabled(true)` in a release build.
-- `onReceivedSslError { handler.proceed() }` → bypasses TLS errors.
+- `onReceivedSslError { handler.proceed() }` → bypasses TLS errors (also rejected by Play).
+- `setMixedContentMode(MIXED_CONTENT_ALWAYS_ALLOW)` → HTTP subresources in an HTTPS page.
 
 ```bash
-grep -rnE 'addJavascriptInterface|setJavaScriptEnabled\(true\)|setAllowUniversalAccessFromFileURLs\(true\)|setAllowFileAccess(FromFileURLs)?\(true\)|setWebContentsDebuggingEnabled\(true\)|onReceivedSslError|loadDataWithBaseURL' --include=*.kt --include=*.java .
+grep -rnE 'addJavascriptInterface|setJavaScriptEnabled\(true\)|setAllowUniversalAccessFromFileURLs\(true\)|setAllowFileAccess(FromFileURLs)?\(true\)|setWebContentsDebuggingEnabled\(true\)|onReceivedSslError|loadDataWithBaseURL|setMixedContentMode' --include=*.kt --include=*.java .
 ```
 
 ## Network / TLS
-- Hand-rolled TrustManager with an empty `checkServerTrusted` (trust-all); `HostnameVerifier { _, _ -> true }`; `SSLSocketFactory` ALLOW_ALL; OkHttp without a `CertificatePinner`.
+- Hand-rolled TrustManager with an empty `checkServerTrusted` (trust-all); `HostnameVerifier { _, _ -> true }`; `SSLSocketFactory` ALLOW_ALL. Missing pinning is a hardening note, not a finding by itself.
 ```bash
 grep -rnE 'checkServerTrusted|X509TrustManager|ALLOW_ALL_HOSTNAME_VERIFIER|HostnameVerifier|TrustManager\[\]|setHostnameVerifier|CertificatePinner|sslSocketFactory' --include=*.kt --include=*.java .
 ```
@@ -46,10 +47,10 @@ grep -rnE 'Cipher\.getInstance\("(AES|DES|RC4)("|/ECB)|getInstance\("(MD5|SHA-1)
 ```bash
 grep -rnE 'MODE_WORLD_(READABLE|WRITEABLE)|rawQuery\(|execSQL\(|getExternalStorage|Log\.[dveiw]\(|printStackTrace' --include=*.kt --include=*.java .
 ```
-Known-safe: `EncryptedSharedPreferences`, Android Keystore (`KeyStore.getInstance("AndroidKeyStore")`), queries with `?` placeholders + `selectionArgs`.
+Known-safe: `EncryptedSharedPreferences` (deprecated, still sound), Tink, Android Keystore (`KeyStore.getInstance("AndroidKeyStore")`), queries with `?` placeholders + `selectionArgs`.
 
 ## Intent / IPC
-- `PendingIntent` without `FLAG_IMMUTABLE` (API 23+) → hijack.
+- Mutable `PendingIntent` (no `FLAG_IMMUTABLE`; the flag is mandatory to state explicitly when targeting API 31+) with an implicit or empty base intent → another app fills in the intent and acts with this app's identity.
 - Implicit intent carrying sensitive data; `startActivity(getIntent().getParcelableExtra(...))` → intent redirection.
 - Reading `getIntent().getStringExtra(...)` and passing it to a sensitive sink without validation.
 ```bash
@@ -58,6 +59,6 @@ grep -rnE 'PendingIntent\.(getActivity|getService|getBroadcast)|FLAG_MUTABLE|get
 
 ## Embedded secrets
 ```bash
-grep -rnE '(API_KEY|SECRET|TOKEN|PASSWORD|AIza[0-9A-Za-z_-]{20,})' --include=*.kt --include=*.java res/values/strings.xml gradle.properties local.properties build.gradle* 2>/dev/null
+grep -rnE '(API_KEY|SECRET|TOKEN|PASSWORD|AIza[0-9A-Za-z_-]{20,})' --include=*.kt --include=*.java --include=strings.xml --include=*.properties --include='build.gradle*' . 2>/dev/null
 ```
 Note: BuildConfig fields / `strings.xml` / a committed `local.properties` all ship or leak. Injecting at build time from a CI secret (not committed) → ok.

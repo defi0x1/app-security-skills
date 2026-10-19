@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
+## [0.4.1]
+
+### Changed
+
+- Usage rewritten as a Goal / Example table; everything after `/appsec` is documented as plain language, not flags.
+- README trimmed: removed the comparison table and duplicated principles.
+- Removed redundant content across references (duplicate regexes, restated scales, repeated rows) and unsupported claims.
+- Change classification simplified: the group is a label only and does not affect review depth, severity or verdict.
+- `report-template.md`: classification field renamed to "Result" to avoid clashing with the merge verdict.
+
+### Fixed
+
+- Android/iOS secrets greps never scanned the target files (`--include` combined with explicit paths).
+- `jsonwebtoken` fixed version, `arc4random` wrongly listed as weak, Android cleartext and `adb backup` statements, Keychain accessibility advice, Flutter/Dio API names.
+- CWE-1426 replaced by CWE-1427 for LLM prompt-input rows; `multi-mr.md` remote parsing for ssh URLs; contradictions in `hunting-method.md`, `review-deep.md` and `web-auth.md`.
+
+### Added
+
+- GraphQL, slowloris/HTTP2 abuse, IaC state files, format-string and native command injection rows; stricter `pull_request_target` / `workflow_run` and IMDS guidance; supply-chain release-age cooldown.
+
 ## [0.4.0]
 
 ### Changed

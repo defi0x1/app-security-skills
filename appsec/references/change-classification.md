@@ -1,6 +1,6 @@
 # Change risk classification
 
-Every MR belongs to one of 10 groups. The MR author declares the group (if any); the reviewer verifies it against the diff. Groups 1 to 8 are low-risk changes that can get a light review; groups 9 and 10 need a full security review. The skill proposes a group; it does not decide the approval flow.
+Every MR belongs to one of 10 groups. The MR author declares the group (if any); the reviewer verifies it against the diff. Groups 1 to 8 are low-risk and may get a light review; 9 and 10 need a full one. The group is a label for the approver: it never lowers review depth, severity, or the verdict. The skill proposes a group; it does not decide the approval flow.
 
 ## 10 groups and verification conditions
 
@@ -17,24 +17,13 @@ Every MR belongs to one of 10 groups. The MR author declares the group (if any);
 | 9 | **Emergency fix for an operational incident** — security review required again after release | Author confirms it is an incident hotfix (incident id) | — (no group change; the skill still reviews fully and states "Needs re-review after release") |
 | 10 | **Large change affecting business flows** | Default for every diff that does not meet the conditions of groups 1–8 | — |
 
-**Proposed group when conditions are not met**: usually **10**; a dependency bump with a CVE → still 4 but "conditions not met" with an SCA finding; logging PII → 7 not met + CWE-532 finding.
+**Observed group**: the lowest-numbered group among 1 to 8 whose conditions all hold on the diff; otherwise **10**. Group 9 is never inferred, only declared. If the declared group's conditions fail, report Mismatch even when the finding itself (SCA, CWE-532 for logged PII) is reported separately.
 
 ## Sensitive code areas (shared by all groups)
 
-Touching **one** line here means groups 1–8 do not meet the "does not touch …" condition:
+Touching **one** line in these areas means groups 1 to 8 fail their "does not touch ..." condition. The regex in command 2 below is the single source: authentication/session, authorization, encryption/secrets, network security, sensitive data (PII, payment, export), system integration (webhook, gRPC, SDK), infrastructure/pipeline (Dockerfile, CI, k8s, terraform, migration, SQL), critical business logic (order, price, transfer, limit, state machine).
 
-| Area | Path / identifier signs (regex, case-insensitive) |
-|---|---|
-| Authentication / session | `auth`, `login`, `session`, `jwt`, `token`, `oauth`, `sso`, `passw`, `otp`, `mfa`, `2fa`, `credential`, `cookie` |
-| Authorization | `authz`, `permission`, `role`, `rbac`, `acl`, `policy`, `guard`, `middleware`, `tenant`, `owner`, `scope` |
-| Encryption / secrets | `crypt`, `cipher`, `hash`, `hmac`, `sign`, `kms`, `vault`, `secret`, `\.env`, `keystore`, `keychain`, `\.pem`, `\.p12` |
-| Network security | `cors`, `csrf`, `tls`, `ssl`, `cert`, `pinning`, `helmet`, `csp`, `ingress`, `network.?policy`, `nginx`, `proxy` |
-| Sensitive data | `pii`, `kyc`, `ssn`, `national_id`, `identity`, `payment`, `card`, `bank`, `wallet`, `balance`, `payout`, `invoice`, `export`, `report` |
-| System integration | `webhook`, `callback`, `client`, `sdk`, `integration`, `gateway`, `adapter`, `grpc`, `\.proto`, `openapi`, `swagger` |
-| Infrastructure / pipeline | `Dockerfile`, `\.gitlab-ci`, `helm`, `k8s`, `kustomize`, `terraform`, `migration`, `schema`, `\.sql` |
-| Critical business logic | `order`, `checkout`, `price`, `discount`, `voucher`, `loyalty`, `approve`, `reject`, `transfer`, `limit`, `quota`, `state.?machine`, `workflow` |
-
-This table is a **signal to read closely**, not a conclusion: a file named `auth_test.go` that only changes a fixture can still be group 6. Always open the hunk.
+A path match is a **signal to read closely**, not a conclusion: `auth_test.go` that only changes a fixture can still be group 6. Always open the hunk.
 
 ## Signal-gathering commands (BASE/HEAD come from Phase 0 of workflows/review.md)
 
@@ -45,9 +34,16 @@ The examples below are written for `MODE=branch` (`"$BASE...HEAD"`). `MODE=local
 git diff --stat "$BASE...HEAD"
 git diff --name-status "$BASE...HEAD"
 
-# 2) Files touching sensitive areas (paths)
-git diff --name-only "$BASE...HEAD" | grep -iE \
- 'auth|login|session|jwt|token|oauth|sso|passw|otp|mfa|2fa|credential|cookie|authz|permission|role|rbac|acl|policy|guard|middleware|tenant|owner|scope|crypt|cipher|hash|hmac|sign|kms|vault|secret|\.env|keystore|keychain|\.pem|\.p12|cors|csrf|tls|ssl|cert|pinning|helmet|csp|ingress|network.?policy|nginx|proxy|pii|kyc|ssn|national.?id|identity|payment|card|bank|wallet|balance|payout|invoice|export|report|webhook|callback|client|sdk|integration|gateway|adapter|grpc|\.proto|openapi|swagger|Dockerfile|\.gitlab-ci|helm|k8s|kustomize|terraform|migration|schema|\.sql|order|checkout|price|discount|voucher|loyalty|approve|reject|transfer|limit|quota|state.?machine|workflow'
+# 2) Files touching sensitive areas (paths). Case-insensitive; one fragment per area.
+SENS='auth|login|session|jwt|token|oauth|sso|passw|otp|mfa|2fa|credential|cookie'
+SENS+='|authz|permission|role|rbac|acl|policy|guard|middleware|tenant|owner|scope'
+SENS+='|crypt|cipher|hash|hmac|sign|kms|vault|secret|\.env|keystore|keychain|\.pem|\.p12'
+SENS+='|cors|csrf|tls|ssl|cert|pinning|helmet|csp|ingress|network.?policy|nginx|proxy'
+SENS+='|pii|kyc|ssn|national.?id|identity|payment|card|bank|wallet|balance|payout|invoice|export|report'
+SENS+='|webhook|callback|client|sdk|integration|gateway|adapter|grpc|\.proto|openapi|swagger'
+SENS+='|Dockerfile|\.gitlab-ci|helm|k8s|kustomize|terraform|migration|schema|\.sql'
+SENS+='|order|checkout|price|discount|voucher|loyalty|approve|reject|transfer|limit|quota|state.?machine|workflow'
+git diff --name-only "$BASE...HEAD" | grep -iE "$SENS"
 
 # 3) Added/removed line contents touching sensitive identifiers (even in harmlessly named files)
 git diff -U0 "$BASE...HEAD" | grep -E '^[+-][^+-]' | grep -iE \
@@ -75,7 +71,9 @@ git diff -U0 "$BASE...HEAD" | grep -E '^-[^-]' | grep -iE \
 
 ## How to record the conclusion
 
-- **Match**: declared group is correct, all conditions met. Still include a "Signals" line so the approver sees why it matches.
-- **Mismatch**: state the **specific condition** violated + `file:line` + one descriptive sentence. Example: *"Declared group 6 (Refactor) but `internal/auth/middleware.go:77` changes the user id source from the JWT to the `x-user-id` header → changes security behavior → proposed group 10."*
-- Group 9 (emergency fix): do not verify the conditions, but record **"Needs re-review after release"** in the verdict even if the review is clean.
-- Do not use the words "safe"/"no review needed". Use "meets the conditions of group N" / "does not meet".
+Fields are in [report-template.md](report-template.md).
+
+- **Match**: all conditions met; the Signals line shows why.
+- **Mismatch**: the specific violated condition + `file:line` + one sentence. Example: *"Declared group 6 (Refactor) but `internal/auth/middleware.go:77` changes the user id source from the JWT to the `x-user-id` header → changes security behavior → proposed group 10."*
+- Group 9 (emergency fix): do not verify the conditions; record **"Needs re-review after release"** in the verdict even if the review is clean.
+- Never write "safe" or "no review needed". Write "meets the conditions of group N" / "does not meet".

@@ -7,7 +7,6 @@ General principles:
 - **Allowlist** instead of blocklist. A blocklist of characters, tags, or fields always misses something.
 - Identity, tenant, and role come from the **session or a verified JWT**, not from headers, body, or query.
 - Fix the root cause in code or configuration; a WAF, changing a port, or hiding a URL is only a temporary cover.
-- AI-generated code is untrusted code: review it like code from a stranger.
 
 ## 1. Injection (CWE-89, 943, 78, 88, 94, 1336)
 
@@ -28,7 +27,7 @@ General principles:
 |---|---|---|
 | `GET /orders/{id}` reads by id, the gateway already checked the role | Customer A changes the id to view B's order (IDOR/BOLA) | The service checks `order.customer_id == user_from_token`; or query `WHERE id=? AND owner_id=?` |
 | Checks `inv.org_id == user.org_id` when the spec says "only the creator or an accountant in the same org" | A colleague in the same org can view it | Implement the **spec exactly**: owner **or** (role=accountant **and** same org). Write a test for each branch |
-| Switch ids to UUID to "prevent IDOR" | Hard to guess is not authorization | UUIDs are fine, but you must still check owner/tenant |
+| Switch ids to UUID to "prevent IDOR" | Hard to guess is not authorization | Still check owner/tenant |
 | A state-changing action (approve, delete, update) guarded only by view permission | — | Check a separate permission for each action |
 | New route has no authz; middleware is opt-out | — | Global auth middleware; public routes must be declared explicitly and reviewed |
 | Path: `new File(base + name)` then `getPath().startsWith(base)` | `getPath()` does not normalize `../`; `replace("../","")` is beaten by `....//` | Compare `startsWith` on `getCanonicalPath()` / `Path.normalize().toRealPath()` + base with a trailing `/`; better: map id → a server-generated file name |
@@ -39,12 +38,11 @@ General principles:
 ## 3. Client-declared identity, auth, session (CWE-807, 290, 287, 306, 347, 384, 640)
 
 - `user_id`, `tenant_id`, `role`, `org_id` from header/body/query: **wrong**. A `/internal/*` route guarded by a header with no credential: **wrong**. Service-to-service calls must carry a credential (mTLS, OIDC token, HMAC) and least-privilege authz, even on the internal network.
-- JWT: pin a single algorithm. `jwt.verify(token, publicKey, {algorithms:['RS256','HS256']})` allows algorithm confusion (signing HS256 with the public key itself). Right: `{algorithms:['RS256']}`, check `iss`, `aud`, `exp`; do not accept `alg:none`; use a patched library (jsonwebtoken > 8.5.1).
+- JWT: pin a single algorithm. `jwt.verify(token, publicKey, {algorithms:['RS256','HS256']})` allows algorithm confusion (signing HS256 with the public key itself). Right: `{algorithms:['RS256']}`, check `iss`, `aud`, `exp`; do not accept `alg:none`; use a patched library (jsonwebtoken >= 9.0.0 for the 2022 CVE-2022-23529/23539/23540/23541 fixes).
 - Session fixation: **issue a new session ID immediately after login**; do not accept a session ID via URL. Cookie: `HttpOnly`, `Secure`, `SameSite`.
 - Reset, invite, and verify tokens: crypto-random ≥ 128 bits, short expiry, single-use, stored as a hash. Compare secrets in constant time.
 - Rate limit per **account** on the server for login, OTP, PIN, reset (a 4-digit PIN is brute-forced in 2 minutes). A limit in the app is bypassed by calling the API directly.
 - Passwords: Argon2id / bcrypt / scrypt with an appropriate cost. `sha256(salt+pw)`, SHA-512, double hashing are all wrong (too fast).
-- Insecure design: easy-to-look-up security questions and no limit on attempts are spec bugs, fixed at the design level.
 
 ## 4. Insecure-by-default (CWE-1188, 1392, 489)
 
@@ -83,10 +81,10 @@ General principles:
 
 ## 9. Crypto (CWE-327, 328, 330, 916, 295, 319)
 
-- No MD5 or SHA1 for security purposes; no ECB (`Cipher.getInstance("AES")` defaults to ECB); no static IV or salt; no `Math.random`, `rand` for tokens, keys, IVs.
+- No MD5 or SHA1 for signatures, password hashing, or integrity against an attacker (non-security checksums are fine); no ECB (`Cipher.getInstance("AES")` defaults to ECB); no static IV or salt; no `Math.random`, `rand` for tokens, keys, IVs.
 - Data encryption: AES-GCM, a fresh random nonce every time, keys in KMS/Vault/Keystore, never hardcoded.
 - TLS: do not disable verification, no trust-all; enable TLS + SASL/auth for Kafka, OpenSearch, DB, Redis.
-- CORS: no `*` with credentials, do not reflect Origin; use an origin allowlist.
+- CORS: no reflected Origin with `Allow-Credentials: true` (browsers reject literal `*` with credentials, so the bug is reflection or a loose regex); use an exact origin allowlist.
 
 ## 10. DoS (CWE-400, 770, 1333)
 
@@ -98,7 +96,7 @@ Check-then-act on balances, limits, vouchers, approval state, unique-by-select: 
 
 ## 12. File upload
 
-Check file type with magic bytes + an extension allowlist, limit size, use server-generated file names, store outside the webroot or in object storage, never execute, check authorization on download, scan for malware if available.
+Magic bytes + extension allowlist, size limit, server-generated file names, store outside the webroot or in object storage (never served as executable or with an attacker-chosen Content-Type), authorization on download. SVG and HTML uploads are script-capable: serve with `Content-Disposition: attachment` or from a separate origin.
 
 ## 13. Business logic (deep review, large features)
 

@@ -8,7 +8,7 @@ Use when the target processes untrusted bytes in a memory-unsafe or privileged c
 - A panic, sanitizer warning, or crash proves a bug only when real untrusted input can reach it. Do not infer memory corruption, code execution, or shared-availability impact from the label alone.
 - Verify with a local harness with sanitizers (ASan, UBSan, TSan, MSan), deterministic concurrency tests, existing fuzz targets. Stop once you have proven the invariant is violated and the consequence is observable; **do not** develop exploitation techniques past corruption.
 - Assembly, JIT code, custom allocators, intra-object accesses, and external libraries may lie outside what the sanitizer tracks. Determine whether the relevant instructions are instrumented.
-- ABI, allocator, architecture, build features, or reachability unclear: Needs validation.
+- ABI, allocator, architecture, build features, or reachability not visible: Needs validation.
 
 ## Bounds, integers, representation
 
@@ -17,6 +17,7 @@ Use when the target processes untrusted bytes in a memory-unsafe or privileged c
 | Out-of-bounds read/write | Length, offset, index, terminator reaching a fixed/allocated buffer with a wrong bound. Recompute the space left after prefix, alignment, padding, terminator. Check both source and destination capacity; is short input read before the declared length is trusted |
 | Overflow, underflow, truncation, sign | Attacker-influenced arithmetic before allocation, copy, loop, index, pointer: `a - b` when `b > a`; `count * size`; addition near max; negative to unsigned; 64-bit length truncated to 32-bit; sentinel `-1` becoming a huge size. Which representation was checked, which one is used |
 | Unit confusion, pointer depth | Mixing bytes, elements, code units, pages, words, wire units, nested element sizes. A bound check that uses the same wrong unit as the allocation is still wrong |
+| Format string, native injection | Attacker-controlled format string (`printf`, `syslog`, logging wrappers, `%n`), or input reaching `system`/`popen`/`exec*` through a native wrapper | The format or command string itself is attacker-controlled, not just an argument |
 | Uninitialized data | Buffers, padding, struct fields, vector capacity that are returned, compared, hashed, serialized, or sent across a trust boundary before initialization. Requires an observable consumer and the actual output length |
 
 ## Lifetime, type, concurrency
