@@ -44,7 +44,7 @@ Rules:
 - **Do not guess facts outside the repo in either direction.** Do not assume the proxy stripped the header, and do not assume it did not.
 - "Needs validation" is **not** a place for vague ideas or low-confidence findings. It requires: a real `file:line` trace, a concrete boundary, a possible outcome, **exactly one or a few missing facts**, and a check plan: local (fixture, test, rendered manifest) and/or observed by the system owner (look at config, policy, routes). Never "send a test request to the live environment".
 - If the source is refutable, it is Rejected, not Needs validation.
-- Needs validation does not affect the merge verdict, but must be listed in the MR description so the system owner can answer.
+- Needs validation does not affect the merge verdict, but is listed in the report with the missing fact so the system owner can answer.
 
 ## 4. Hardening is not a finding
 
@@ -125,12 +125,11 @@ One pass checking each item, literally, reporting the result of each; every hit 
 
 ## 8. Anti-patterns
 
+Beyond the rules above (six points, Needs validation, hardening, safe verification):
+
 1. Reporting a deviation from a checklist as if it were a vulnerability.
-2. Defense-in-depth advice without a reachable boundary violation.
-3. Verifying on a live or shared environment.
-4. Guessing vendor, proxy, browser, IdP, or deployment behavior that is not in the source.
-5. Treating the same principal's inherent permissions, or self-impact, as crossing a boundary.
-6. Reporting a stronger consequence than the one observed (crash into RCE, ordinary work into shared DoS).
-7. Assigning a severity to a Needs validation item.
-8. Writing the report before the adversarial challenge is done, or letting the prose and the findings table disagree.
-9. Using an old confirmed finding as a template that anchors the hunt, or re-reporting an unchanged old finding as new.
+2. Guessing vendor, proxy, browser, IdP, or deployment behavior that is not in the source.
+3. Treating the same principal's inherent permissions, or self-impact, as crossing a boundary.
+4. Reporting a stronger consequence than the one observed (crash into RCE, ordinary work into shared DoS).
+5. Writing the report before the adversarial challenge is done, or letting the prose and the findings table disagree.
+6. Using an old confirmed finding as a template that anchors the hunt, or re-reporting an unchanged old finding as new.

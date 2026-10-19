@@ -11,12 +11,15 @@ Phases 0 to 2 of review.md (scope, diff, intent, inventory, classification, scan
 
 ## D0. Setup (decide automatically, do not ask)
 
-| Scope | Profile | Differences |
-|---|---|---|
-| Diff (work in progress, MR) | `standard` | Coverage units come from the surfaces in the diff and from parallel paths outside the diff to the same effect. Repeat hunter batches until the critic is clean, at most 2 batches |
-| Whole repo or directory | `standard`; the user says "quick" then `quick`, "thorough"/"pre-pentest" then `deep` | Units come from every surface in scope. Skip Phase 1 (classification) and gate 4 (there is no diff) |
-| `quick` | | Coarse units (surface × boundary × class, merging subsystems). Exactly 1 hunter batch + 1 critic; critic suggestions are marked "deferred" |
-| `deep` | | Split units by subsystem and lifecycle (create, update, delete, restore, migration). Critic until clean. HIGH/CRITICAL findings go through two independent verifiers |
+Scope: a diff (work in progress, MR) takes units from the surfaces in the diff plus parallel paths outside the diff to the same effect. A whole repo or directory takes units from every surface in scope, and skips Phase 1 (classification) and gate 4 (there is no diff).
+
+Profile: `standard` by default; the user says "quick" then `quick`; "thorough" or "pre-pentest" then `deep`.
+
+| Profile | Differences |
+|---|---|
+| `standard` | Repeat hunter batches until the critic is clean (diff scope: at most 2 batches) |
+| `quick` | Coarse units (surface × boundary × class, merging subsystems). Exactly 1 hunter batch + 1 critic; critic suggestions are marked "deferred" |
+| `deep` | Split units by subsystem and lifecycle (create, update, delete, restore, migration). Critic until clean. HIGH/CRITICAL findings go through two independent verifiers |
 
 The profile changes **breadth**, not the evidence standard: do not drop the 5 gates, do not drop independent verifiers, do not drop the "Needs validation" discipline.
 
@@ -41,7 +44,7 @@ Read-only subagents (`Explore` or general-purpose), in parallel, returning facts
 
 | Agent | Returns |
 |---|---|
-| 1a. Product, stack | Product type, users, operators, sensitive actions; languages, frameworks, build, runtime, visible deploy model; entry points and subsystem boundaries; build/test commands that can run offline (not run); similar software for calibration (if grounded) |
+| 1a. Product, stack | Product type, users, operators, sensitive actions; languages, frameworks, build, runtime, visible deploy model; entry points and subsystem boundaries; build/test commands that can run offline (not run) |
 | 1b. Principals, permissions, controls | Each low-trust principal and its permitted actions; authentication at each surface; per-resource authz, tenant/owner scope; process, workload, CI, plugin, model/tool, IPC permissions; escalation, confirmation, revocation, recovery, fallback; visible controls and controls that depend on deploy |
 | 1c. Entry surfaces, copies, sinks | Every place external input enters: HTTP/browser, RPC/message, file/archive, CLI/ENV/config, plugin/dependency/CI, cloud events, model context/tool parameters, mobile/deeplink/webview, IPC. For each surface: main transformations, copies, sensitive sinks, limits, parallel paths |
 | 1d. Test, build, deploy | Small tests/fixtures that can check a boundary with fake data; commands that would download dependencies, publish, or call paid APIs (forbidden); deploy controls that source cannot establish; final configuration per environment when the repo picks it deterministically |
@@ -57,8 +60,8 @@ IDs are stable across rounds, built from source references, not from line number
 `coverage.md`:
 
 ```markdown
-| ID | Status | Batch | Owner | Files read | Checks done | Candidate | Still open |
-|---|---|---|---|---|---|---|---|
+| ID | Status | Batch | Owner | Files read | Checks done | Candidate | Still open | History |
+|---|---|---|---|---|---|---|---|---|
 ```
 
 | Status | Meaning | Required |
@@ -121,7 +124,7 @@ Reassign: {ID that was closed but not really closed, reason}
 Stop: yes/no
 ```
 
-The main session drops out-of-scope suggestions, builds IDs, and deduplicates. Reassigned units: move the old result to the history column, assign a **new** hunter, do not copy old evidence. `standard`/`deep`: when the critic has nothing left and no "not started" units remain, call **one more closing critic**, a different one; only if it is also clean may you say "sufficiently covered within scope". `quick`: exactly 1 batch + 1 critic, all suggestions marked "deferred". Maximum batches or budget exhausted: untouched units are marked "deferred", and the report says so explicitly.
+The main session drops out-of-scope suggestions, builds IDs, and deduplicates. Reassigned units: move the old result to the History column, assign a **new** hunter, do not copy old evidence. `standard`/`deep`: when the critic has nothing left and no "not started" units remain, call **one more closing critic**, a different one; only if it is also clean may you say "sufficiently covered within scope". `quick`: exactly 1 batch + 1 critic, all suggestions marked "deferred". Maximum batches or budget exhausted: untouched units are marked "deferred", and the report says so explicitly.
 
 ## D5. Independent verification
 
@@ -130,7 +133,7 @@ Replaces Phase 3C of review.md for the Security track. Assign each unique candid
 ```text
 You did not write this candidate. Try to refute it from source and bounded local evidence. Read-only, no network, do not probe real environments.
 1. Check every file:line in the trace and evidence. The first entry is a real entrypoint for a low-trust principal; the last entry is the stated sink/boundary effect.
-2. Reconstruct the strongest control on the path: validation, identity, authz, normalization, lifecycle, framework, isolation; compare every parallel path. If the architecture summary has similar software, note whether it has the same pattern (for calibration, not for refutation).
+2. Reconstruct the strongest control on the path: validation, identity, authz, normalization, lifecycle, framework, isolation; compare every parallel path.
 3. Proposed Finding: reproduce the smallest result yourself if possible; check the input, interface, conditions, and the fake principal/resource affected. Do not infer a stronger result. Diff scope: re-check whether this change caused it or it was pre-existing.
 4. Check that severity, CWE, confidence, and fix match only what the evidence establishes; whether the fix enforces the invariant or merely moves the trust point.
 5. Proposed Needs validation: whether the blocker really lies outside source/local. If source can refute it, Reject. If it still decides the outcome, keep it, write a local check plan and the specific system owner to observe, non-destructive.
@@ -150,14 +153,13 @@ Follow [R/report-template.md](../references/report-template.md), including the "
 
 ## Cumulative across rounds
 
-One round typically finds only about half of the vulnerabilities that multiple rounds together find. When re-reviewing the same MR/branch after fixes, or re-running the whole repo:
+A single round misses bugs that later rounds find. When re-reviewing the same MR/branch after fixes, or re-running the whole repo:
 
 1. Compare current source against each old finding and unit (`git diff <old head>..<new head> -- <relevant paths>`). The old head does not prove the path is unchanged.
 2. Old finding, source unchanged: put it into the candidate set (keep the ID), remove it from the hunt list, and it **still** goes through the verifier in D5. Source changed (usually fixed): create a "re-check" unit; if the verifier confirms the fix, record it in Context as "fixed in round N".
 3. Needs validation items, deferred, blocked, old out of scope, and units whose source changed: become work for this round. They never substitute for current coverage.
 4. Units already covered, source unchanged: still shown in the table, may be lowered in priority; the critic decides whether another round is needed. An old Reject blocks only that exact claim, and only when the evidence is unchanged.
 5. The previous round was `quick` or narrow scope: it contributes only the evidence and gaps it recorded, and never implies "the rest is fine".
-
 6. Convergence (round 3 and later, both tracks): review only the delta since the last round, and do not repeat resolved or rejected findings. If new findings keep arriving, say that the approach may need rework instead of listing more nits.
 
 No previous round: say so in the Coverage section. Never imply that one round exhausted everything.

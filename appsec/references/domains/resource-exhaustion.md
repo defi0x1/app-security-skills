@@ -7,7 +7,7 @@ Use when a request, message, file, tenant state, or agent job can consume CPU, m
 - Three things are required: a **path from input to cost**, a **missing effective limit**, and **impact on others, a shared service, safety functions, or the operator's costs**. Self-limiting within the requester's own process is not a service vulnerability.
 - A missing rate limit is not enough. Check body/message/file limits, concurrency, queues, deadlines, DB constraints, front gateways, per-tenant quotas before calling something "unbounded".
 - State the attacker's cost, the work the service must do, whether it persists, the scope, and recoverability. A small input causing a superlinear or persistent effect is very different from sustained load.
-- Upstream limits, topology, autoscaling, paid quotas, recovery behavior outside the repo: Needs validation.
+- Upstream limits, topology, autoscaling, paid quotas, or recovery behavior outside the repo: Needs validation.
 
 ## Computational amplification
 
@@ -21,7 +21,7 @@ Use when a request, message, file, tenant state, or agent job can consume CPU, m
 
 | Layer | What to hunt |
 |---|---|
-| Unbounded buffers and cardinality | Bodies, out-of-order streams, uploads, sessions, unique cache keys, metric labels, log fields, subscriptions, pending jobs accumulate with no per-item **and** total limit. Is there cleanup on disconnect, timeout, cancel, half-finished parse |
+| Unbounded buffers and cardinality | Bodies, slow-read/slow-send connections (slowloris), out-of-order streams, HTTP/2 stream resets or CONTINUATION frames, uploads, sessions, unique cache keys, metric labels, log fields, subscriptions, pending jobs accumulate with no per-item **and** total limit. Is there cleanup on disconnect, timeout, cancel, half-finished parse |
 | Handle and temp-resource leaks | Failed or aborted requests skip cleanup of sockets, files, DB cursors, timers, subprocesses, temp files |
 | Work continuing after cancel | Client timeout, disconnect, cancelled job, or failed authz returns, but DB/model/network/worker work keeps running. Trace how cancellation and deadlines propagate through every layer |
 
@@ -53,4 +53,4 @@ Use when a request, message, file, tenant state, or agent job can consume CPU, m
 
 1. State the untrusted input, the requester's effort, the amplification or held resource, the scope of shared impact, and recovery. A missing limit with no concrete shared impact: hardening.
 2. Confirm there is no limit upstream, in the parser, queue, tenant, or framework visible in the repo.
-3. Prioritize by: low effort, no auth needed, cross-tenant, persistent, poor recovery. Severity per [severity-cwe.md](../severity-cwe.md).
+3. Severity rises with: low effort, no auth, cross-tenant, persistent, poor recovery ([severity-cwe.md](../severity-cwe.md)).

@@ -8,7 +8,7 @@ Use when the repo resolves dependencies, builds from untrusted contributions, ru
 - Follow integrity across every handoff: source identity, resolved inputs, build worker, artifact identity, test results, signature/attestation, promotion, updating consumers.
 - **CI configuration is authorization code.** Determine which event triggers the workflow, whose code runs, which secrets and tokens it has, and what it can publish or modify.
 - A checksum taken from the same untrusted place as the artifact does not prove integrity. Identify the root of trust and the behavior when verification fails.
-- Branch protection, hosted runners, registries, signing services, production promotion not visible in the repo: Needs validation.
+- Branch protection, hosted runners, registries, signing services, or production promotion outside the repo: Needs validation.
 
 ## Dependencies and build inputs
 
@@ -23,10 +23,10 @@ Use when the repo resolves dependencies, builds from untrusted contributions, ru
 
 | Layer | What to hunt |
 |---|---|
-| Untrusted code in a privileged workflow ("pwn request") | Fork PRs, issue comments, dependency updates, or external events run contributor-controlled code together with protected secrets, write tokens, deploy permissions, or trusted runners. GitHub: `pull_request_target` or `workflow_run` + checkout of `github.event.pull_request.head.sha`. GitLab: fork MR pipelines running with protected variables. Compare trigger type, checkout ref, approval gate, environment protection, narrowed `permissions` |
-| Injection via workflow expressions | Branch names, commit messages, issue/PR titles and bodies, artifact names, matrix values, or generated outputs flow into `run:` shell, template expressions, or paths. GitHub: `run: echo "${{ github.event.issue.title }}"`. Correct: pass through `env:` and then use quoted `"$VAR"` |
+| Untrusted code in a privileged workflow ("pwn request") | Fork PRs, issue comments, dependency updates, or external events run contributor-controlled code together with protected secrets, write tokens, deploy permissions, or trusted runners. GitHub: `pull_request_target` (runs in the base repo context with secrets) or `issue_comment` that checks out/runs PR head code (`github.event.pull_request.head.sha`, `refs/pull/*`); `workflow_run` that consumes artifacts or refs from an untrusted PR workflow. GitLab: fork MR pipelines running with protected variables. Compare trigger type, checkout ref, approval gate, environment protection, narrowed `permissions` |
+| Injection via workflow expressions | Branch names, commit messages, issue/PR titles and bodies, artifact names, matrix values, or generated outputs flow into `run:` shell, template expressions, paths, or `$GITHUB_ENV`/`$GITHUB_OUTPUT` writes. GitHub: `run: echo "${{ github.event.issue.title }}"`. Correct: pass through `env:` and then use quoted `"$VAR"` |
 | Mixed cache, artifact, workspace | A low-trust job writes a cache, artifact, workspace, or output that a later privileged job restores and then runs or releases. Check cache keys/namespaces, producer identity, digest binding, and whether promotion re-resolves by a mutable name |
-| Over-privileged automation identity | A CI job has permissions beyond the operation, repo, environment, or duration it needs; untrusted job input can choose the affected resource. Missing least privilege alone: hardening; a reachable privileged operation is required |
+| Over-privileged automation identity | A CI job has permissions beyond the operation, repo, environment, or duration it needs; untrusted job input can choose the affected resource. Self-hosted runners that take public-fork jobs belong here. Missing least privilege alone: hardening; a reachable privileged operation is required |
 
 ## Release and updates
 
@@ -44,9 +44,9 @@ Use when the repo resolves dependencies, builds from untrusted contributions, ru
 - Examine the path of a revoked key, failed download, missing attestation, partial platform release, rollback, and registry outage. Failure policy is part of release integrity.
 
 ```bash
-# Quick probe hints (GitHub Actions; GitLab is similar with .gitlab-ci.yml)
+# Probe hints (GitHub Actions; GitLab: .gitlab-ci.yml)
 grep -rnE 'pull_request_target|workflow_run|issue_comment' .github/workflows 2>/dev/null
-grep -rnE '\$\{\{\s*github\.(event\.(issue|pull_request|comment|review|head_commit)|head_ref)' .github/workflows 2>/dev/null
+grep -rnE '\$\{\{\s*github\.(event\.(issue|pull_request|comment|review|head_commit|workflow_run)|head_ref)' .github/workflows 2>/dev/null
 grep -rnE 'uses:\s*[^@]+@(v?[0-9]+(\.[0-9]+)*|main|master)\s*$' .github/workflows 2>/dev/null   # action not pinned to SHA
 grep -rnE 'permissions:|contents:\s*write|id-token:\s*write' .github/workflows 2>/dev/null
 grep -rnE 'curl[^|]*\|\s*(ba)?sh|wget[^|]*\|\s*(ba)?sh' --include='*.yml' --include='*.yaml' --include='Dockerfile*' --include='*.sh' . 2>/dev/null
@@ -57,4 +57,4 @@ grep -rnE 'curl[^|]*\|\s*(ba)?sh|wget[^|]*\|\s*(ba)?sh' --include='*.yml' --incl
 1. State the low-trust actor, the source/cache/artifact/metadata it controls, the trusted job or updater that consumes it, and the result: unauthorized publish, code injection, secret exposure, privileged execution.
 2. Prove that artifact identity breaks across a handoff: a mutable name or an unbound digest must reach a real consumer.
 3. Check package manager, repo platform, registry, and signing service defaults at the pinned version. Unclear hosted controls: Needs validation.
-4. Do not publish, do not modify real releases, and do not run workflows on shared runners to verify.
+4. Do not publish, modify real releases, or run workflows on shared runners to verify.

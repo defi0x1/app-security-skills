@@ -8,7 +8,7 @@ Before checking "dependency source": determine whether the organization has an i
 
 | # | Rule | Reason |
 |---|---|---|
-| 1 | Commit a reviewed lockfile; CI installs with `npm ci` / `pnpm install --frozen-lockfile` / `yarn install --immutable` / `pip install --require-hashes` | A `^` range + no lockfile + `npm install` immediately pulls the latest version, including a hijacked version with injected malicious code. Changing `^` to `~` still receives a malicious patch; `npm audit` does not know about new malware |
+| 1 | Commit a reviewed lockfile; CI installs with `npm ci` / `pnpm install --frozen-lockfile` / `yarn install --immutable` / `pip install --require-hashes` | A `^` range + no lockfile + `npm install` immediately pulls the latest version, including a hijacked version with injected malicious code. Changing `^` to `~` still receives a malicious patch; `npm audit` does not know about new malware. Also: a release-age cooldown for automated updates (Dependabot `cooldown`, Renovate `minimumReleaseAge`, pnpm `minimumReleaseAge`) and no install scripts from unvetted packages (`--ignore-scripts`, pnpm `onlyBuiltDependencies`) blunt freshly published malicious versions |
 | 2 | Dependencies and base images go through a controlled registry (curation, scan, SBOM, with an owner) | An image pulled straight from Docker Hub is outside the inventory: when a major CVE hits (e.g. Log4Shell) nobody is alerted about that component |
 | 3 | **New** dependency: verify it exists, the maintainer, history, downloads; do not install on an unverified AI suggestion | Slopsquatting, typosquatting |
 | 4 | CVE in a transitive dependency: force the patched version with `overrides` (npm) / `resolutions` (yarn) / `pnpm.overrides` / `dependencyManagement` (Maven) / `constraints` (Gradle); rerun tests, update the SBOM | Do not wait for the parent library. Log4j: force `log4j-core >= 2.17.1`; a WAF blocking `${jndi:` is only temporary |
@@ -81,5 +81,3 @@ grep -rEn 'allow_failure:[[:space:]]*true|continue-on-error:[[:space:]]*true|_DI
 for f in .trivyignore .semgrepignore; do [ -f "$f" ] && grep -vE '^[[:space:]]*#|^[[:space:]]*$' "$f"; done
 grep -rEn 'nosemgrep|nosec|noqa' --exclude-dir={.git,node_modules} . | grep -vEi 'reason|because|issue|#[0-9]'
 ```
-
-Recommended pre-commit: pre-commit-hooks (detect-private-key, check-added-large-files, check-merge-conflict), gitleaks, trivy (vuln, config), hadolint, semgrep, gosec (Go).

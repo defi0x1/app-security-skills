@@ -8,7 +8,7 @@ Use when the code has gRPC, GraphQL transport, Protobuf/Thrift/Cap'n Proto, cust
 - Schema validation proves **shape**, not origin, resource permission, ordering, or safe values. Follow the decoded field to policy and side effects.
 - Broker guarantees and application guarantees are different. Record retry, ordering, ack, dedup, and transaction behavior before assessing a state change.
 - A parser mismatch needs two consumers, two schema versions, or two concrete wire representations and **one differing value with a security consequence**.
-- Broker ACLs, service mesh identity, topic bindings, compatibility behavior outside the repo: Needs validation.
+- Broker ACLs, mesh identity, topic bindings, or compatibility behavior outside the repo: Needs validation.
 
 ## Framing, schema, interpretation
 
@@ -26,6 +26,14 @@ Use when the code has gRPC, GraphQL transport, Protobuf/Thrift/Cap'n Proto, cust
 | Peer identity differs from application principal | mTLS, workload identity, bearer metadata, or a credential broker authenticates the **channel**, but a caller-chosen field decides the user/tenant. The channel and the declared principal must be bound by deterministic policy |
 | Per-item and per-stream authz | A stream, subscription, or batch is authorized once, and later items point to a different resource or continue after a role, membership, or token is revoked |
 | Callback/reply correlation | Predictable, reused, or cross-tenant correlation IDs let a response, webhook, cancel, or ack satisfy another caller's pending operation |
+
+## GraphQL
+
+| Layer | What to hunt |
+|---|---|
+| Resolver-level authz | Authz only on top-level queries/mutations; nested fields, node/`id` lookups, connections, subscriptions, and union/interface resolvers return objects without an owner/tenant check |
+| Batching and aliases | Aliases or array batching run many login/OTP/coupon/lookup attempts in one request and bypass per-request rate limits; query depth/complexity limits: see [resource-exhaustion.md](resource-exhaustion.md) |
+| Transport | Mutations accepted over GET or `text/plain`/form content types (CSRF); introspection or field suggestions only as hardening unless they expose a private schema |
 
 ## Broker and queue isolation
 

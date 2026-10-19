@@ -6,9 +6,9 @@ A single flow that makes every choice itself. The review has two equal tracks: *
 
 ### Read the parameters
 
-The user types only `/appsec`, optionally with one of the items below, or a natural-language sentence. Infer everything and **do not ask** about scope, change group, platform, deep mode or review track:
+Everything after `/appsec` is plain language, not flags: it may be empty, one of the items below, or a free sentence. Infer everything and **do not ask** about scope, change group, platform, deep mode or review track:
 
-| Seen in the request | Scope |
+| Seen in the request | Effect |
 |---|---|
 | Nothing | **Auto**: work in progress on the current branch against the target branch (commits on the branch + uncommitted + new files) |
 | `!123`, `#123`, `MR 123`, `PR 123`, a bare number, a URL containing `/merge_requests/123` or `/pull/123` | **MR/PR** by number. Several numbers: multiple MRs ([R/multi-mr.md](../references/multi-mr.md)) |
@@ -81,7 +81,7 @@ Tell the user **one line** before reviewing: scope (branch → target, MR, or di
 
 ## Phase 1. Change classification
 
-Per [R/change-classification.md](../references/change-classification.md): run the signal-collecting commands, infer the observed group. If the author declared a group (in the MR description), compare; if not, propose one. Match: write Match with the signals. Mismatch: the violated condition + `file:line` + one sentence. Mobile adds sensitive areas `AndroidManifest.xml`, `Info.plist`, `network_security_config`, `build.gradle`, `Podfile`, `pubspec`, deeplink, WebView, storage, keystore, keychain. Group 9: write "Needs review after release".
+Per [R/change-classification.md](../references/change-classification.md): run the signal-collecting commands, infer the observed group. If the author declared a group (in the MR description), compare; if not, propose one. Match: write Match with the signals. Mismatch: the violated condition + `file:line` + one sentence. Mobile adds sensitive areas `AndroidManifest.xml`, `Info.plist`, `network_security_config`, `build.gradle`, `Podfile`, `pubspec`, deeplink, WebView, storage, keystore, keychain. Group 9: write "Needs re-review after release".
 
 ## Phase 2. Scanner
 
@@ -152,7 +152,7 @@ The "Not a security finding" section in severity-cwe.md goes only to Notes or is
 
 ## Phase 3B. Code review
 
-Per [R/code-review.md](../references/code-review.md): 9 groups (correct logic, correct business rules, data/migration/API contract, reliability, performance, design and over-engineering, tests, maintainability and conventions, operability), severity BLOCKER/MAJOR/MINOR/NIT, 4 verification gates.
+Per [R/code-review.md](../references/code-review.md): its 9 groups, severity scale and 4 verification gates.
 
 How to read: read the whole touched file (not only the hunk) and the main callers/callees; Grep for existing helpers before accepting newly hand-written code; compare conventions with the surrounding code in the repo (cite a sample `file:line`), not with taste; for each new abstraction ask "what is the simplest version". An issue that is both a vulnerability and a bug: record it once, in the Security track. Group 10 MR or a new integration: cross-check against the security design notes in the MR description per [R/secure-design.md](../references/secure-design.md).
 
@@ -191,7 +191,7 @@ Start the report with the finding count; when nothing needs fixing, say so plain
 
 Diff touches manifest, Dockerfile, CI: the SCA and DevSecOps section is mandatory.
 
-Multiple MRs: run each unit, then merge. Deduplicate when same repo, same file, same CWE family, line ranges overlapping within 20 lines; keep the version with fuller evidence, record every IID. Block only for issues caused by at least one MR in the set. The overall verdict is the worst level; add a per-MR classification table.
+Multiple MRs: run each unit, then merge. Deduplicate per [R/multi-mr.md](../references/multi-mr.md) "Deduplication across MRs". Block only for issues caused by at least one MR in the set. The overall verdict is the worst level; add a per-MR classification table.
 
 Scanner false positives: record in Notes with tool, rule, location, reason dropped. Suppressions in code must have a reason: `// nosemgrep: <rule-id> -- <reason>`.
 

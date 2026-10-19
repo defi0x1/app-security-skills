@@ -1,13 +1,13 @@
 # Code review: logic, business rules, design, over-engineering
 
-The Code track runs alongside Security. Goal: catch defects that break behavior, break business rules, or make the code more expensive than it needs to be. This is not a place to apply personal preference.
+Goal: catch defects that break behavior, break business rules, or make the code more expensive than it needs to be. Not a place for personal preference.
 
 ## Severity
 
 | Level | Meaning | Example |
 |---|---|---|
-| BLOCKER | Certainly wrong on the main flow, data loss or corruption, spec violation, breaks compatibility with no plan | Wrong money calculation; migration drops a column in use; API changes a field and breaks old clients; loop that never terminates |
-| MAJOR | Wrong in a realistic situation; missing tests for an important flow; significant unnecessary complexity; bad performance at real scale | Empty list/null from an external API not handled; non-idempotent retry; interface + factory + strategy for exactly one implementation; N+1 on a list endpoint |
+| BLOCKER | Wrong on the main flow (no unusual input or state needed), data loss or corruption, spec violation, breaks compatibility with no plan | Wrong money calculation; migration drops a column in use; API changes a field and breaks old clients; loop that never terminates |
+| MAJOR | Wrong only under a realistic but non-main-flow input or state; missing tests for an important flow; significant unnecessary complexity; bad performance at real scale | Empty list/null from an external API not handled; non-idempotent retry; interface + factory + strategy for exactly one implementation; N+1 on a list endpoint |
 | MINOR | Has consequences but small, local, easy to fix | Misleading name; small duplication of an existing helper; log missing context on error |
 | NIT | Optional, no effect on behavior | Simplify an expression. At most 5 items; drop entirely if a linter/formatter already covers it |
 
@@ -22,7 +22,7 @@ The Code track runs alongside Security. Goal: catch defects that break behavior,
 
 **Class-level reporting.** After a finding is confirmed, search the diff and the repo for other instances of the same pattern and list them all under that one finding, so the author fixes the class in a single pass instead of through a fix, re-review, new-instance loop.
 
-Confidence 1 to 10 as in Security. BLOCKER and MAJOR need 7 or higher and a scenario; MINOR 8 or higher; NIT 9 or higher. Below the threshold: move to "Questions for the author" if worth asking, otherwise drop.
+Confidence 1 to 10 (scale in workflows/review.md). BLOCKER and MAJOR need 7 or higher and a scenario; MINOR 8 or higher; NIT 9 or higher. Below the threshold: move to "Questions for the author" if worth asking, otherwise drop.
 
 ## Intent sources (for business-rule review)
 
@@ -78,8 +78,7 @@ Root question: **what is the simplest version that meets the current requirement
 | Pass-through layers: controller → service → manager → repository where the middle layers only call down | What behavior does this layer add? | Remove layers that add no behavior |
 | Generics/templates, making configurable something that has never changed | Who will change this value, and when? | A constant; make it configurable when there is a need |
 | Parameters, flags, hooks "for later" | Does any caller pass a value other than the default? | Remove unused parameters |
-| New framework/library for something the stdlib or an existing helper can do | What does the repo already have that is similar? (Grep) | Use what exists |
-| Rewriting something already in the codebase or stdlib (retry, date utils, validation) | Grep for a similar name/behavior | Reuse |
+| New library, or hand-written retry/date/validation code, where the stdlib or an existing helper does it | What does the repo already have that is similar? (Grep) | Reuse what exists |
 | Event/queue/microservice for a simple synchronous flow | Is there a requirement for latency, separate deploys, load tolerance? | Call the function directly |
 | Premature optimization: cache, pool, batch with no measurements | Is there a measurement or SLA? | Simple version, measure first |
 | DTO/mapper repeating every field between identical layers | Are the models actually different? | Merge or share |
@@ -90,15 +89,14 @@ A design finding must include a **simpler version** (code or a concrete descript
 
 ### 7. Tests
 
-- Tests exist for new behavior and for fixed bugs (a reproducing test).
-- Tests cover error branches, boundaries, permissions; not only the happy path.
-- Tests check real results, not just "does not throw"; do not mock the thing under test; assertions are not too loose.
-- Tests do not depend on real time, ordering, or network; not flaky.
+- Tests exist for new behavior and for fixed bugs (a reproducing test), and cover error branches, boundaries, permissions, not only the happy path.
+- Assertions check real results, not just "does not throw"; the thing under test is not mocked.
+- Tests do not depend on real time, ordering, or network.
 - Tests deleted, `skip`ped, or expectations loosened in the MR: ask why.
 
 ### 8. Readability, maintainability
 
-Misleading names (a `get` function with side effects); comments that disagree with the code; dead code, commented-out code, TODOs with no owner; unused imports/variables; one file changed for too many concerns; violations of conventions already in the repo (cite an example).
+Misleading names (a `get` function with side effects); comments that disagree with the code; dead or commented-out code; TODOs with no owner; violations of conventions already in the repo (cite an example).
 
 ### 9. Operability
 
@@ -106,4 +104,4 @@ Logs with enough context to investigate (ids, no PII); metrics for important new
 
 ## Not a code review finding
 
-Formatting, whitespace, import order (linters handle it); renaming by preference when the current name is not wrong; rewriting the same logic in a different style; suggesting "more modern" patterns/libraries with no consequence; unmeasured micro-optimizations; refactors outside the MR scope.
+Formatting, whitespace, import order, unused imports (linters handle it); renaming by preference when the current name is not wrong; rewriting the same logic in a different style; suggesting "more modern" patterns/libraries with no consequence; unmeasured micro-optimizations; refactors outside the MR scope.

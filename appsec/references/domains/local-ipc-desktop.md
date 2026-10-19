@@ -8,7 +8,7 @@ Use when the target is a desktop/mobile app, privileged helper, updater, local d
 - Paths, process names, bundle/package IDs, and self-declared sender fields are **not** peer authentication. Use OS peer credentials, code identity (signature), capability handles, protected channel state.
 - A native bridge or helper must authorize **each operation and the final resource** after parsing. A trusted UI or broker does not make attacker-influenced parameters trusted.
 - OS sandbox, code signing, entitlements, permissions, keychain ACLs, exported-component policy, and confirmation dialogs are real controls when seen and pinned.
-- Signing, post-merge manifest, OS version, device policy, installer ACLs, packaging not visible: Needs validation.
+- Signing, post-merge manifest, OS version, device policy, installer ACLs, or packaging not visible: Needs validation.
 
 ## Deeplinks, callbacks, navigation
 
@@ -30,7 +30,7 @@ Use when the target is a desktop/mobile app, privileged helper, updater, local d
 
 | Layer | What to hunt |
 |---|---|
-| Missing IPC peer authentication | Unix socket, named pipe, XPC, Binder, D-Bus, native messaging, RPC, shared memory, loopback listener accepts a low-trust peer without checking OS credentials (`SO_PEERCRED`, audit token), code identity, sandbox token. Requires a meaningful method or data behind the channel |
+| Missing IPC peer authentication | Unix socket, named pipe, XPC, Binder, D-Bus, native messaging, RPC, shared memory, loopback listener accepts a low-trust peer without checking OS credentials (`SO_PEERCRED`/`getpeereid`, XPC audit token (not PID), `Binder.getCallingUid`, named-pipe client token), code identity, sandbox token. A loopback HTTP/WebSocket listener is also reachable from any web page (CORS/CSRF, DNS rebinding, missing `Host`/`Origin` check) without any local malware. Requires a meaningful method or data behind the channel |
 | Self-declared principal differs from channel identity | The channel belongs to this app/user, but a request field selects another user, tenant, profile, or capability. Bind methods and resources to peer credentials |
 | Exported component overreach | Activity, service, receiver, provider, automation endpoint callable from outside, doing work meant only for the app itself. Read the **post-merge manifest**, intent filters, permission/signature level, path grants, aliases |
 | IPC lifecycle, correlation | Guessable request ID, reused handle, stale channel, inherited descriptor, world-writable socket path, a restart that lets one peer answer/cancel/reuse another peer's operation. Permissions for creating and cleaning up socket files, locks, ports, shared memory regions |

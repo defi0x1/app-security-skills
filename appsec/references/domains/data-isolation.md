@@ -8,7 +8,7 @@ Use when there is multi-tenant data or ACLs, derived copies (search, index, cach
 - Trace derived copies: source data that was filtered can become dangerous in search, cache, analytics, export, preview, logs, replicas, and backups with different ACLs and lifetimes.
 - Deletion and revocation are lifecycle contracts: check the current copy, history, cache, index, export, restore, and queues.
 - A generic privacy preference or retention concern is **not automatically** a vulnerability. It needs a clear data-access boundary or a deletion/revocation commitment, plus an unauthorized reader or operation.
-- Storage policy outside the repo, retention, CDN, replica lag, backup access that is not visible: Needs validation.
+- Storage policy, retention, CDN, replica lag, or backup access outside the repo: Needs validation.
 
 ## Tenant and object isolation
 
@@ -55,4 +55,4 @@ Use when there is multi-tenant data or ACLs, derived copies (search, index, cach
 
 1. State the attacker, the protected data/state, the affected owner/tenant, the substitute copy or operation, and the exposed data or unauthorized mutation.
 2. Quote both the canonical source policy and the path that bypasses or diverges from it; confirm that no other layer enforces the same tenant/lifecycle condition.
-3. If an external cache, object storage, replica, analytics, backup, or retention outside the repo determines the outcome: Needs validation, and state what the system owner needs to observe.
+3. If a system outside the repo (cache, object storage, replica, backup, retention) decides the outcome: Needs validation, naming what the owner must observe.

@@ -8,7 +8,7 @@ Use when the repo defines IAM, IaC (Terraform, Helm, Kustomize, CloudFormation),
 - Map each workload's identity to specific operations and resources. A broad policy is a finding only when low-trust input can reach an unauthorized operation.
 - Ingress, proxy, mesh, metadata service, and admission policy are real boundaries, but count only when both the configuration **and** its attachment are visible.
 - A secret reference is not a secret leak. It needs a low-privilege reader, an output, an artifact, a log path, or an unsafe fallback.
-- Account policy, network attachment, runtime admission, hosted metadata, drift: Needs validation.
+- Account policy, network attachment, runtime admission, hosted metadata, or drift outside the repo: Needs validation.
 
 ## Workload identity and IAM
 
@@ -24,7 +24,7 @@ Use when the repo defines IAM, IaC (Terraform, Helm, Kustomize, CloudFormation),
 |---|---|
 | Exposed service or management plane | Ingress, `LoadBalancer`/`NodePort` Services, listeners, `0.0.0.0/0` security groups, LB annotations, port mappings, or a `0.0.0.0` bind expose admin, debug, metrics, pprof, actuator, or internal APIs. A public route in the repo to a sensitive handler: confirmable. Only a missing network control: Needs validation |
 | Bypassing the trusted proxy/mesh | The backend accepts forwarded identity, mTLS subject, or authz metadata from peers outside the ingress/sidecar; secondary ports, health, and legacy paths go around the mesh. Check header stripping, who can connect, fail-open when the proxy is missing |
-| Reaching metadata and internal services | An untrusted URL/destination/protocol reaches the instance metadata service (169.254.169.254, IMDSv1), control plane sockets, or internal APIs carrying workload credentials. URL parsing: SSRF in [secure-coding-patterns.md](../secure-coding-patterns.md) section 6 |
+| Reaching metadata and internal services | An untrusted URL/destination/protocol reaches the instance metadata service (169.254.169.254; reachable by a plain GET under AWS IMDSv1 or optional IMDSv2, while IMDSv2-required needs a PUT token and hop limit 1 blocks containers; GCP/Azure require a metadata header), control plane sockets, or internal APIs carrying workload credentials. URL parsing: SSRF in [secure-coding-patterns.md](../secure-coding-patterns.md) section 6 |
 
 ## Container and orchestration
 
@@ -39,7 +39,7 @@ Use when the repo defines IAM, IaC (Terraform, Helm, Kustomize, CloudFormation),
 | Layer | What to hunt |
 |---|---|
 | Control precedence drift | Dev values, chart defaults, ENV, CLI flags, feature gates, sidecar injection, or per-region overlays turn off auth, TLS, tenant scoping, or audit in one environment. **Render the final configuration** for each environment (`helm template`, `kustomize build`), not just the base file |
-| Secrets leaking across workload boundaries | Secrets enter logs, crash reports, process arguments, shared ENV, broad volumes, build output, service discovery, or read APIs that another workload/tenant can access. A public endpoint or key ID is not a credential |
+| Secrets leaking across workload boundaries | Secrets enter logs, crash reports, process arguments, shared ENV, broad volumes, build output, IaC state/plan files, service discovery, or read APIs that another workload/tenant can access. A public endpoint or key ID is not a credential |
 | Credential renewal and incident fallback | A failed mount, refresh, rotation, or revocation leaves old credentials valid or drops the app into a lower-trust identity mode. Check startup, readiness, reconnect, client caches |
 
 ## Storage, event, edge

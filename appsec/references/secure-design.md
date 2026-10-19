@@ -1,6 +1,6 @@
 # Secure design and threat modeling
 
-Use when reviewing an MR in change group 10, a new integration, or an infrastructure change: if the MR description has security design notes, check the implementation against the authz matrix and acceptance criteria; if they are missing and the change is large, add it to Questions for the author (not a finding).
+Use for a change group 10 MR, a new integration, or an infrastructure change. If the MR description or design doc has security design notes, check the implementation against the authz matrix and acceptance criteria; a mismatch is a finding. If they are missing and the change is large, add one entry to Questions for the author (never a finding).
 
 ## Design documents need a security section
 
@@ -12,7 +12,7 @@ Use when reviewing an MR in change group 10, a new integration, or an infrastruc
 | Acceptance criteria | Quantified and verifiable. "Ensure it is secure" and "has authentication" fail: a pentest has no baseline to verify against, and it cannot be audited after go-live |
 | Integrations | A table: source, destination, protocol, port, auth, **where the secret is stored**, **whether the data contains PII**, **assessment/data processing agreement with the partner**, whether the flow is **internal or external** |
 
-A common design flaw: service-to-service calls use a hardcoded API key in config, with a note saying "internal, so no authz needed". Correct: the key goes in a Secret Manager/Vault; internal flows still get least-privilege authz (zero trust); the service account is listed in the privileged account table.
+Common design flaw: service-to-service calls use a hardcoded API key in config, noted as "internal, so no authz needed". Correct: key in a Secret Manager/Vault; internal flows still get least-privilege authz; the service account is in the privileged account table.
 
 Examples of measurable acceptance criteria:
 - "Every `/api/v1/orders/*` endpoint returns 403 when `order.customer_id` differs from the user in the JWT; there is an integration test for cross-user access."
@@ -54,5 +54,4 @@ Examples of measurable acceptance criteria:
 - Integrations: {destination, auth, where the secret is stored, PII, internal/external}
 - Main threats (STRIDE) and controls: {...}
 - Security acceptance criteria (measurable): {...}
-- Expected change group (1-10): {N} because {...}
 ```

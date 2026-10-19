@@ -5,13 +5,13 @@ description: "Code reviewer with one entry point: /appsec. Use whenever the user
 
 # appsec
 
-One purpose: **code review**. One command: **`/appsec`**, with or without extra information:
+One purpose: **code review**. One command: **`/appsec`**. Everything after it is optional plain language, not flags:
 
-```text
-/appsec                       work in progress on this branch (including uncommitted, new files) against the target branch
-/appsec 123 | !123 | <URL>    MR/PR by number or link
-/appsec <natural language>    e.g. "into develop", "uncommitted only", "thorough", "whole repo", "src/billing", "Spec: ..."
-```
+| Goal | Example |
+|---|---|
+| Work in progress on this branch (including uncommitted, new files) against the target branch | `/appsec` |
+| MR/PR by number or link | `/appsec 123`, `/appsec !123`, `/appsec <URL>` |
+| Anything else | `/appsec against develop`, `/appsec uncommitted only`, `/appsec be thorough`, `/appsec audit the whole repo`, `/appsec src/billing`, `/appsec 123. Spec: ...` |
 
 The skill decides scope, standard or deep review, which domains to hunt, and the independent reviewer on its own; it does not ask again unless it cannot continue. It always reviews two equal tracks: **Security** and **Code** (logic, business rules, design, over-engineering, performance, tests, conventions). Respond in the user's language (default English); keep code and identifiers in English.
 
@@ -32,7 +32,7 @@ Read only the file you need, not all of them.
 | [references/severity-cwe.md](references/severity-cwe.md) | Severity anchor scale, severity table, CWE; "not a security finding" |
 | [references/change-classification.md](references/change-classification.md) | 10 change groups, sensitive code areas, signal-collecting commands |
 | [references/supply-chain-devsecops.md](references/supply-chain-devsecops.md) | Lockfile, dependency sources, CVE, SBOM, CI tokens, pipeline |
-| [references/secure-design.md](references/secure-design.md) | Cross-checking a group 10 MR against security design notes, authz matrix, acceptance criteria |
+| [references/secure-design.md](references/secure-design.md) | Cross-checking a large MR or new integration against security design notes, authz matrix, acceptance criteria |
 | [references/ai-llm-security.md](references/ai-llm-security.md) | OWASP LLM Top 10 2025, lethal trifecta, hunting RAG/memory/agent/MCP bugs |
 | [references/mobile/](references/mobile/) | `lessons.md`, `android.md`, `ios.md`, `cross-platform.md` |
 | [references/report-template.md](references/report-template.md) | Report template |
